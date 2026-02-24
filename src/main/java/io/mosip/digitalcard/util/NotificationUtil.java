@@ -118,4 +118,33 @@ public class NotificationUtil {
         }
         return new String(in.readAllBytes(), StandardCharsets.UTF_8);
     }
+    public NotificationResponseDTO whatsAppNotification(String whatsappNumber, String fileName, String templateCode, Map<String, Object> attributes, byte[] attachmentFile, String templateLang) throws Exception {
+
+        log.info("Sending WhatsApp notification");
+
+        MultiValueMap<Object, Object> map = new LinkedMultiValueMap<>();
+        if (attachmentFile != null) {
+            LinkedMultiValueMap<String, String> fileHeaders = new LinkedMultiValueMap<>();
+            fileHeaders.add("Content-Disposition",
+                    "form-data; name=files; filename=" + fileName + ".pdf");
+            fileHeaders.add("Content-Type", "application/pdf");
+
+            HttpEntity<byte[]> fileEntity = new HttpEntity<>(attachmentFile, fileHeaders);
+
+            map.add("files", fileEntity);
+        }
+        map.add("recipient", whatsappNumber);
+        map.add("message", getEmailContent(templateCode, attributes, templateLang));
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        HttpEntity<MultiValueMap<Object, Object>> httpEntity =
+                new HttpEntity<>(map, headers);
+
+        ResponseWrapper<?> responseWrapper = (ResponseWrapper<?>) restApiClient.postApi(ApiName.WHATSAPPNOTIFIER, null, "", "", MediaType.MULTIPART_FORM_DATA, httpEntity, ResponseWrapper.class);
+
+        return mapper.readValue(mapper.writeValueAsString(responseWrapper.getResponse()), NotificationResponseDTO.class
+        );
+    }
 }
