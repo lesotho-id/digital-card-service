@@ -13,6 +13,7 @@ import io.mosip.digitalcard.repositories.DigitalCardTransactionRepository;
 import io.mosip.digitalcard.service.CardGeneratorService;
 import io.mosip.digitalcard.service.DigitalCardService;
 import io.mosip.digitalcard.service.EmailHelperService;
+import io.mosip.digitalcard.service.WhatsAppHelperService;
 import io.mosip.digitalcard.util.*;
 import io.mosip.digitalcard.websub.CredentialStatusEvent;
 import io.mosip.digitalcard.websub.StatusEvent;
@@ -79,6 +80,9 @@ public class DigitalCardServiceImpl implements DigitalCardService {
     @Autowired
     private LanguageUtility languageUtility;
 
+    @Autowired(required = false)
+    private WhatsAppHelperService whatsAppHelperService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -140,6 +144,8 @@ public class DigitalCardServiceImpl implements DigitalCardService {
             decryptedCredential = encryptionUtil.decryptData(credential);
             JSONObject jsonObject = new org.json.JSONObject(decryptedCredential);
             JSONObject decryptedCredentialJson = jsonObject.getJSONObject("credentialSubject");
+            logger.info("WhatsApp Number in attributes: {}", attributes.get("whatsappNumber"));
+            logger.info("Email Id in attributes: {}", attributes.get("email"));
             rid=getRid(decryptedCredentialJson.get("id"));
             attributes.put(IdType.RID.toString(), rid);
             //sets additional attributes for all templates.
@@ -171,6 +177,10 @@ public class DigitalCardServiceImpl implements DigitalCardService {
             // Send digital Card Pdf to Email
             if (isEmailEnabled) {
                 emailHelperService.sendDigitalCardInEmail((String) attributes.get(IdType.RID.toString()), attributes, pdfBytes, templateLangCode);
+            }
+            // Send digital Card Pdf to WhatsApp
+            if (whatsAppHelperService != null) {
+                whatsAppHelperService.sendDigitalCardInWhatsApp((String) attributes.get(IdType.RID.toString()), attributes, pdfBytes, templateLangCode);
             }
         }catch (QrcodeGenerationException e) {
             loginErrorDetails(rid,DigitalCardServiceErrorCodes.QRCODE_NOT_GENERATED.getError());
