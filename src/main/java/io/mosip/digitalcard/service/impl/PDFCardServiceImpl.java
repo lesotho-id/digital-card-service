@@ -104,6 +104,9 @@ public class PDFCardServiceImpl implements CardGeneratorService {
 	@Autowired
 	private CredentialsVerifier credentialsVerifier;
 
+	@Value("${mosip.print.service.uincard.signature.required:true}")
+	private boolean isSignatureRequired;
+
 	@Value("${mosip.digitalcard.service.uincard.lowerleftx}")
 	private int lowerLeftX;
 
@@ -220,10 +223,8 @@ public class PDFCardServiceImpl implements CardGeneratorService {
 			attributes.put(QRCODE, "data:image/png;base64," + imageString);
 			isQRCodeSet = true;
 		}
-
 		return isQRCodeSet;
 	}
-
 	/**
 	 * Sets the applicant photo.
 	 *
@@ -261,6 +262,9 @@ public class PDFCardServiceImpl implements CardGeneratorService {
 		ByteArrayOutputStream out = null;
 		try {
 			out = (ByteArrayOutputStream) pdfGenerator.generate(in);
+			logger.debug("Signature required - "+isSignatureRequired);
+			if(isSignatureRequired) {
+				logger.debug("Signature required inside true - "+isSignatureRequired);
 			PDFSignatureRequestDto request = new PDFSignatureRequestDto(lowerLeftX, lowerLeftY, upperRightX,
 					upperRightY, reason, 1, password);
 			request.setApplicationId("KERNEL");
@@ -290,13 +294,15 @@ public class PDFCardServiceImpl implements CardGeneratorService {
 					SignatureResponseDto.class);
 
 			pdfSignatured = Base64.decodeBase64(signatureResponseDto.getData());
-
+			} else {
+				logger.debug("Signature required inside false - "+isSignatureRequired);
+				pdfSignatured = out.toByteArray();
+			}
 		} catch (Exception e) {
 			logger.error(io.mosip.kernel.pdfgenerator.itext.constant.PDFGeneratorExceptionCodeConstant.PDF_EXCEPTION.getErrorMessage(),e.getMessage()
 					+ ExceptionUtils.getStackTrace(e));
 		}
 		logger.debug("UinCardGeneratorImpl::generateUinCard()::exit");
-
 		return pdfSignatured;
 	}
 }
